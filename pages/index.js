@@ -35,7 +35,7 @@ const sections = {
     "Automation used?",
     "Secure data storage?",
     "Staff trained on tech?",
-    "Systems regularly updated?"
+    "Systems updated regularly?"
   ]
 };
 
@@ -52,17 +52,22 @@ export default function Home() {
   const sectionNames = Object.keys(sections);
   const currentSection = sectionNames[step];
 
-  // ✅ AUTH FIX
+  // ✅ AUTH STATE
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
       setUser(data.session?.user || null);
     });
 
-    supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user || null);
-    });
+    const { data: listener } = supabase.auth.onAuthStateChange(
+      (_event, session) => {
+        setUser(session?.user || null);
+      }
+    );
+
+    return () => listener.subscription.unsubscribe();
   }, []);
 
+  // ✅ LOGIN
   const login = async () => {
     const { error } = await supabase.auth.signInWithPassword({
       email,
@@ -77,13 +82,14 @@ export default function Home() {
       password
     });
     if (error) alert(error.message);
-    else alert("Check email to confirm account");
+    else alert("Signup successful. You can now login.");
   };
 
   const logout = async () => {
     await supabase.auth.signOut();
   };
 
+  // ✅ HANDLE ANSWERS
   const handleChange = (section, question, value) => {
     setAnswers({
       ...answers,
@@ -94,6 +100,7 @@ export default function Home() {
     });
   };
 
+  // ✅ SCORE
   const calculateScore = () => {
     let total = 0;
     let max = 0;
@@ -105,23 +112,27 @@ export default function Home() {
       });
     });
 
-    const finalScore = Math.round((total / max) * 100);
+    const finalScore = max === 0 ? 0 : Math.round((total / max) * 100);
     setScore(finalScore);
     return finalScore;
   };
 
-  // ✅ SAVE TO DATABASE
+  // ✅ SAVE RESULT
   const saveResult = async () => {
     const finalScore = calculateScore();
 
-    await supabase.from("results").insert([
+    const { error } = await supabase.from("results").insert([
       {
         user_id: user.id,
         score: finalScore
       }
     ]);
 
-    alert("Result saved!");
+    if (error) {
+      alert("Error saving result");
+    } else {
+      alert("Result saved!");
+    }
   };
 
   // 🔐 LOGIN SCREEN
@@ -130,36 +141,60 @@ export default function Home() {
       <div style={{ padding: 30 }}>
         <h2>Login</h2>
 
-        <input placeholder="Email" onChange={(e) => setEmail(e.target.value)} />
+        <input
+          placeholder="Email"
+          onChange={(e) => setEmail(e.target.value)}
+        />
         <br /><br />
 
-        <input type="password" placeholder="Password" onChange={(e) => setPassword(e.target.value)} />
+        <input
+          type="password"
+          placeholder="Password"
+          onChange={(e) => setPassword(e.target.value)}
+        />
         <br /><br />
 
         <button onClick={login}>Login</button>
-        <button onClick={signup} style={{ marginLeft: 10 }}>Sign Up</button>
+        <button onClick={signup} style={{ marginLeft: 10 }}>
+          Sign Up
+        </button>
       </div>
     );
   }
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", fontFamily: "Arial" }}>
+    <div style={{ fontFamily: "Arial" }}>
 
-      {/* NAV */}
+      {/* NAVBAR */}
       <div style={{ background: "#111", color: "#fff", padding: 15 }}>
-        <span onClick={() => setScreen("dashboard")} style={{ marginRight: 15 }}>Dashboard</span>
-        <span onClick={() => setScreen("assessment")} style={{ marginRight: 15 }}>Assessment</span>
-        <span onClick={() => setScreen("results")} style={{ marginRight: 15 }}>Results</span>
-        <span onClick={() => setScreen("recommendations")} style={{ marginRight: 15 }}>Recommendations</span>
-        <button onClick={logout} style={{ float: "right" }}>Logout</button>
+        <span style={{ marginRight: 15, cursor: "pointer" }} onClick={() => setScreen("dashboard")}>
+          Dashboard
+        </span>
+
+        <span style={{ marginRight: 15, cursor: "pointer" }} onClick={() => setScreen("assessment")}>
+          Assessment
+        </span>
+
+        <span style={{ marginRight: 15, cursor: "pointer" }} onClick={() => setScreen("results")}>
+          Results
+        </span>
+
+        <span style={{ marginRight: 15, cursor: "pointer" }} onClick={() => setScreen("recommendations")}>
+          Recommendations
+        </span>
+
+        <button onClick={logout} style={{ float: "right" }}>
+          Logout
+        </button>
       </div>
 
+      {/* MAIN CONTENT */}
       <div style={{ padding: 20 }}>
 
         {screen === "dashboard" && (
           <>
-            <h1>Dashboard</h1>
-            <p>Welcome back 👋</p>
+            <h1>Welcome to your Dashboard</h1>
+            <p>Select a section above</p>
           </>
         )}
 
@@ -168,9 +203,14 @@ export default function Home() {
             <h2>{currentSection}</h2>
 
             {sections[currentSection].map((q, i) => (
-              <div key={i}>
+              <div key={i} style={{ marginBottom: 15 }}>
                 <p>{q}</p>
-                <select onChange={(e) => handleChange(currentSection, q, e.target.value)}>
+                <select
+                  value={answers[currentSection]?.[q] || ""}
+                  onChange={(e) =>
+                    handleChange(currentSection, q, e.target.value)
+                  }
+                >
                   <option value="">Select</option>
                   <option value="1">1 - Poor</option>
                   <option value="2">2 - Weak</option>
@@ -181,9 +221,9 @@ export default function Home() {
               </div>
             ))}
 
-            <br />
-
-            <button onClick={() => setStep(Math.max(step - 1, 0))}>Back</button>
+            <button onClick={() => setStep(Math.max(step - 1, 0))}>
+              Back
+            </button>
 
             <button
               onClick={() => {
@@ -193,6 +233,7 @@ export default function Home() {
                   setScreen("results");
                 }
               }}
+              style={{ marginLeft: 10 }}
             >
               Next
             </button>
@@ -202,7 +243,7 @@ export default function Home() {
         {screen === "results" && (
           <>
             <h2>Results</h2>
-            <h3>{calculateScore()}%</h3>
+            <h3>Score: {calculateScore()}%</h3>
             <button onClick={saveResult}>Save Result</button>
           </>
         )}
@@ -212,7 +253,7 @@ export default function Home() {
             <h2>Recommendations</h2>
             <p>
               {score < 40 && "Improve structure and processes."}
-              {score >= 40 && score < 70 && "Optimize and scale."}
+              {score >= 40 && score < 70 && "Optimize operations and scale."}
               {score >= 70 && "Focus on growth and expansion."}
             </p>
           </>

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 const sections = {
   Strategy: [
@@ -17,6 +17,19 @@ export default function Home() {
   const [screen, setScreen] = useState("dashboard");
   const [step, setStep] = useState(0);
   const [answers, setAnswers] = useState({});
+  const [isMobile, setIsMobile] = useState(false);
+
+  // Detect screen size properly
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+
+    handleResize(); // run on load
+    window.addEventListener("resize", handleResize);
+
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   const sectionNames = Object.keys(sections);
   const currentSection = sectionNames[step];
@@ -58,16 +71,23 @@ export default function Home() {
   };
 
   return (
-    <div style={{ display: "flex", fontFamily: "Arial" }}>
-
+    <div
+      style={{
+        display: "flex",
+        flexDirection: isMobile ? "column" : "row",
+        fontFamily: "Arial"
+      }}
+    >
       {/* SIDEBAR */}
-      <div style={{
-        width: 220,
-        height: "100vh",
-        background: "#111",
-        color: "#fff",
-        padding: 20
-      }}>
+      <div
+        style={{
+          width: isMobile ? "100%" : 220,
+          height: isMobile ? "auto" : "100vh",
+          background: "#111",
+          color: "#fff",
+          padding: 20
+        }}
+      >
         <h2>📊 SaaS</h2>
 
         <p style={{ cursor: "pointer" }} onClick={() => setScreen("dashboard")}>
@@ -88,13 +108,12 @@ export default function Home() {
       </div>
 
       {/* MAIN CONTENT */}
-      <div style={{ flex: 1, padding: 30 }}>
-
+      <div style={{ flex: 1, padding: 20 }}>
         {/* DASHBOARD */}
         {screen === "dashboard" && (
           <>
             <h1>Welcome to your Dashboard</h1>
-            <p>Select a section from the left menu</p>
+            <p>Select a section from the menu</p>
           </>
         )}
 
@@ -111,6 +130,7 @@ export default function Home() {
                   onChange={(e) =>
                     handleChange(currentSection, q, e.target.value)
                   }
+                  style={{ width: isMobile ? "100%" : "auto" }}
                 >
                   <option value="">Select</option>
                   <option value="1">1 - Poor</option>
@@ -169,8 +189,7 @@ export default function Home() {
             </button>
           </>
         )}
-
       </div>
     </div>
   );
-}
+            }

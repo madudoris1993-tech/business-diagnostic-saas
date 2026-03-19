@@ -1,39 +1,88 @@
 import { useState, useEffect } from "react";
+import { supabase } from "../lib/supabase";
 
 const sections = {
   Strategy: [
-    "Does the company have a clearly documented vision and mission?",
-    "Are business goals defined across all levels?",
-    "Is there a structured strategic plan (1–3 years)?",
-    "Are decisions aligned with long-term objectives?",
-    "Is performance reviewed against strategy?"
+    "Vision & mission clearly defined?",
+    "Goals communicated across levels?",
+    "Structured strategic plan?",
+    "Decisions aligned long-term?",
+    "Performance reviewed regularly?"
   ],
   Operations: [
-    "Are processes documented and standardized?",
-    "Is performance monitored regularly?",
-    "Are operations efficient?",
-    "Is there a quality control system?",
-    "Are improvements reviewed regularly?"
+    "Processes documented?",
+    "Performance monitored?",
+    "Efficient workflows?",
+    "Quality control system?",
+    "Continuous improvement?"
+  ],
+  Finance: [
+    "Accurate financial records?",
+    "Budgeting system?",
+    "Metrics tracked?",
+    "Cash flow sustainable?",
+    "Data-driven decisions?"
+  ],
+  Customers: [
+    "Target market defined?",
+    "Customer needs assessed?",
+    "Complaint handling system?",
+    "Satisfaction measured?",
+    "Retention strategy?"
+  ],
+  Technology: [
+    "Tools support operations?",
+    "Automation used?",
+    "Secure data storage?",
+    "Staff trained on tech?",
+    "Systems regularly updated?"
   ]
 };
 
 export default function Home() {
+  const [user, setUser] = useState(null);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+
   const [screen, setScreen] = useState("dashboard");
   const [step, setStep] = useState(0);
   const [answers, setAnswers] = useState({});
-  const [isMobile, setIsMobile] = useState(false);
-
-  useEffect(() => {
-    const handleResize = () => {
-      setIsMobile(window.innerWidth < 768);
-    };
-    handleResize();
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
-  }, []);
+  const [score, setScore] = useState(0);
 
   const sectionNames = Object.keys(sections);
   const currentSection = sectionNames[step];
+
+  // ✅ AUTH FIX
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => {
+      setUser(data.session?.user || null);
+    });
+
+    supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user || null);
+    });
+  }, []);
+
+  const login = async () => {
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password
+    });
+    if (error) alert(error.message);
+  };
+
+  const signup = async () => {
+    const { error } = await supabase.auth.signUp({
+      email,
+      password
+    });
+    if (error) alert(error.message);
+    else alert("Check email to confirm account");
+  };
+
+  const logout = async () => {
+    await supabase.auth.signOut();
+  };
 
   const handleChange = (section, question, value) => {
     setAnswers({
@@ -56,36 +105,61 @@ export default function Home() {
       });
     });
 
-    return max === 0 ? 0 : Math.round((total / max) * 100);
+    const finalScore = Math.round((total / max) * 100);
+    setScore(finalScore);
+    return finalScore;
   };
 
-  return (
-    <div style={{
-      display: "flex",
-      flexDirection: isMobile ? "column" : "row",
-      fontFamily: "Arial"
-    }}>
+  // ✅ SAVE TO DATABASE
+  const saveResult = async () => {
+    const finalScore = calculateScore();
 
-      {/* SIDEBAR */}
-      <div style={{
-        width: isMobile ? "100%" : 220,
-        background: "#111",
-        color: "#fff",
-        padding: 20
-      }}>
-        <h2>📊 SaaS</h2>
-        <p onClick={() => setScreen("dashboard")}>Dashboard</p>
-        <p onClick={() => setScreen("assessment")}>Assessment</p>
-        <p onClick={() => setScreen("results")}>Results</p>
+    await supabase.from("results").insert([
+      {
+        user_id: user.id,
+        score: finalScore
+      }
+    ]);
+
+    alert("Result saved!");
+  };
+
+  // 🔐 LOGIN SCREEN
+  if (!user) {
+    return (
+      <div style={{ padding: 30 }}>
+        <h2>Login</h2>
+
+        <input placeholder="Email" onChange={(e) => setEmail(e.target.value)} />
+        <br /><br />
+
+        <input type="password" placeholder="Password" onChange={(e) => setPassword(e.target.value)} />
+        <br /><br />
+
+        <button onClick={login}>Login</button>
+        <button onClick={signup} style={{ marginLeft: 10 }}>Sign Up</button>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", fontFamily: "Arial" }}>
+
+      {/* NAV */}
+      <div style={{ background: "#111", color: "#fff", padding: 15 }}>
+        <span onClick={() => setScreen("dashboard")} style={{ marginRight: 15 }}>Dashboard</span>
+        <span onClick={() => setScreen("assessment")} style={{ marginRight: 15 }}>Assessment</span>
+        <span onClick={() => setScreen("results")} style={{ marginRight: 15 }}>Results</span>
+        <span onClick={() => setScreen("recommendations")} style={{ marginRight: 15 }}>Recommendations</span>
+        <button onClick={logout} style={{ float: "right" }}>Logout</button>
       </div>
 
-      {/* MAIN */}
-      <div style={{ flex: 1, padding: 20 }}>
+      <div style={{ padding: 20 }}>
 
         {screen === "dashboard" && (
           <>
-            <h1>Welcome</h1>
-            <p>Select a section</p>
+            <h1>Dashboard</h1>
+            <p>Welcome back 👋</p>
           </>
         )}
 
@@ -96,12 +170,7 @@ export default function Home() {
             {sections[currentSection].map((q, i) => (
               <div key={i}>
                 <p>{q}</p>
-                <select
-                  value={answers[currentSection]?.[q] || ""}
-                  onChange={(e) =>
-                    handleChange(currentSection, q, e.target.value)
-                  }
-                >
+                <select onChange={(e) => handleChange(currentSection, q, e.target.value)}>
                   <option value="">Select</option>
                   <option value="1">1 - Poor</option>
                   <option value="2">2 - Weak</option>
@@ -114,9 +183,7 @@ export default function Home() {
 
             <br />
 
-            <button onClick={() => setStep(Math.max(step - 1, 0))}>
-              Back
-            </button>
+            <button onClick={() => setStep(Math.max(step - 1, 0))}>Back</button>
 
             <button
               onClick={() => {
@@ -126,7 +193,6 @@ export default function Home() {
                   setScreen("results");
                 }
               }}
-              style={{ marginLeft: 10 }}
             >
               Next
             </button>
@@ -137,6 +203,18 @@ export default function Home() {
           <>
             <h2>Results</h2>
             <h3>{calculateScore()}%</h3>
+            <button onClick={saveResult}>Save Result</button>
+          </>
+        )}
+
+        {screen === "recommendations" && (
+          <>
+            <h2>Recommendations</h2>
+            <p>
+              {score < 40 && "Improve structure and processes."}
+              {score >= 40 && score < 70 && "Optimize and scale."}
+              {score >= 70 && "Focus on growth and expansion."}
+            </p>
           </>
         )}
 

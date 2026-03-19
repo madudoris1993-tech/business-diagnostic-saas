@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 
 const sections = {
@@ -14,41 +13,14 @@ const sections = {
     "Is there a system for monitoring operational performance?",
     "Are tasks completed efficiently with minimal delays?",
     "Is there a quality control process in place?",
-    "Are operations regularly reviewed for improvement opportunities?"
-  ],
-  Team: [
-    "Are roles and responsibilities clearly defined for all employees?",
-    "Are employees evaluated based on measurable performance indicators?",
-    "Is there a structured onboarding process?",
-    "Are training and development programs in place?",
-    "Is employee engagement and satisfaction regularly assessed?"
-  ],
-  Finance: [
-    "Are financial records accurate and up to date?",
-    "Is there a clear budgeting and forecasting process?",
-    "Are key financial metrics tracked regularly?",
-    "Is the business financially sustainable (cash flow, profitability)?",
-    "Are financial decisions based on data and analysis?"
-  ],
-  Customers: [
-    "Is the target market clearly defined?",
-    "Are customer needs regularly assessed?",
-    "Is there a system for handling customer complaints?",
-    "Are customer satisfaction levels measured?",
-    "Are there strategies in place for customer retention?"
-  ],
-  Technology: [
-    "Are appropriate tools and systems used to support operations?",
-    "Is there any level of automation in the business?",
-    "Are data and records stored securely and efficiently?",
-    "Are employees trained to use technology effectively?",
-    "Is technology regularly updated to improve efficiency?"
+    "Are operations regularly reviewed for improvement?"
   ]
 };
 
 export default function Home() {
   const [step, setStep] = useState(0);
   const [answers, setAnswers] = useState({});
+
   const sectionNames = Object.keys(sections);
 
   const handleChange = (section, question, value) => {
@@ -66,8 +38,7 @@ export default function Home() {
     let max = 0;
 
     sectionNames.forEach(section => {
-      const questions = sections[section];
-      questions.forEach(q => {
+      sections[section].forEach(q => {
         total += answers[section]?.[q] || 0;
         max += 5;
       });
@@ -76,17 +47,17 @@ export default function Home() {
     return Math.round((total / max) * 100);
   };
 
-  const getLevel = (score) => {
-    if (score <= 40) return "Critical";
-    if (score <= 70) return "Moderate";
-    return "Strong";
+  const getInsight = (score) => {
+    if (score < 40) return "⚠️ Your business needs urgent structural improvements.";
+    if (score < 70) return "⚡ Your business is stable but has growth gaps.";
+    return "🚀 Your business is strong and scalable!";
   };
 
   const currentSection = sectionNames[step];
 
   return (
     <div style={{ padding: 20, fontFamily: "Arial" }}>
-      <h1>Business Diagnostic Assessment</h1>
+      <h1>Business Diagnostic Tool</h1>
 
       {step < sectionNames.length ? (
         <>
@@ -115,16 +86,19 @@ export default function Home() {
             {step > 0 && (
               <button onClick={() => setStep(step - 1)}>Back</button>
             )}
-            <button onClick={() => setStep(step + 1)} style={{ marginLeft: 10 }}>
+            <button
+              onClick={() => setStep(step + 1)}
+              style={{ marginLeft: 10 }}
+            >
               Next
             </button>
           </div>
         </>
       ) : (
         <>
-          <h2>Results</h2>
-          <h3>Overall Score: {calculateScore()}%</h3>
-          <h3>Performance Level: {getLevel(calculateScore())}</h3>
+          <h2>📊 Your Results</h2>
+          <h3>Score: {calculateScore()}%</h3>
+          <p>{getInsight(calculateScore())}</p>
 
           <button onClick={() => setStep(0)}>Restart</button>
         </>

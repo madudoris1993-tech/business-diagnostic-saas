@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { supabase } from "../lib/supabase";
 
 const sections = {
   Strategy: [
@@ -14,22 +15,54 @@ const sections = {
 };
 
 export default function Home() {
+  const [user, setUser] = useState(null);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+
   const [screen, setScreen] = useState("dashboard");
   const [step, setStep] = useState(0);
   const [answers, setAnswers] = useState({});
   const [isMobile, setIsMobile] = useState(false);
 
-  // Detect screen size properly
   useEffect(() => {
+    const session = supabase.auth.getSession().then(({ data }) => {
+      setUser(data.session?.user || null);
+    });
+
     const handleResize = () => {
       setIsMobile(window.innerWidth < 768);
     };
 
-    handleResize(); // run on load
+    handleResize();
     window.addEventListener("resize", handleResize);
 
     return () => window.removeEventListener("resize", handleResize);
   }, []);
+
+  const handleLogin = async () => {
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password
+    });
+
+    if (error) alert(error.message);
+    else setUser(data.user);
+  };
+
+  const handleSignup = async () => {
+    const { error } = await supabase.auth.signUp({
+      email,
+      password
+    });
+
+    if (error) alert(error.message);
+    else alert("Check your email to confirm signup");
+  };
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    setUser(null);
+  };
 
   const sectionNames = Object.keys(sections);
   const currentSection = sectionNames[step];
@@ -70,125 +103,119 @@ export default function Home() {
     return "Focus on growth, expansion, and automation.";
   };
 
+  // 🔐 LOGIN SCREEN
+  if (!user) {
+    return (
+      <div style={{ padding: 30 }}>
+        <h2>Login</h2>
+
+        <input
+          placeholder="Email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+        />
+        <br /><br />
+
+        <input
+          type="password"
+          placeholder="Password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+        />
+        <br /><br />
+
+        <button onClick={handleLogin}>Login</button>
+        <button onClick={handleSignup} style={{ marginLeft: 10 }}>
+          Sign Up
+        </button>
+      </div>
+    );
+  }
+
+  // 🔥 MAIN APP
   return (
-    <div
-      style={{
-        display: "flex",
-        flexDirection: isMobile ? "column" : "row",
-        fontFamily: "Arial"
-      }}
-    >
+    <div style={{
+      display: "flex",
+      flexDirection: isMobile ? "column" : "row",
+      fontFamily: "Arial"
+    }}>
+
       {/* SIDEBAR */}
-      <div
-        style={{
-          width: isMobile ? "100%" : 220,
-          height: isMobile ? "auto" : "100vh",
-          background: "#111",
-          color: "#fff",
-          padding: 20
-        }}
-      >
+      <div style={{
+        width: isMobile ? "100%" : 220,
+        height: isMobile ? "auto" : "100vh",
+        background: "#111",
+        color: "#fff",
+        padding: 20
+      }}>
         <h2>📊 SaaS</h2>
 
-        <p style={{ cursor: "pointer" }} onClick={() => setScreen("dashboard")}>
-          Dashboard
-        </p>
+        <p onClick={() => setScreen("dashboard")}>Dashboard</p>
+        <p onClick={() => setScreen("assessment")}>Assessment</p>
+        <p onClick={() => setScreen("results")}>Results</p>
+        <p onClick={() => setScreen("recommendations")}>Recommendations</p>
 
-        <p style={{ cursor: "pointer" }} onClick={() => setScreen("assessment")}>
-          Assessment
-        </p>
-
-        <p style={{ cursor: "pointer" }} onClick={() => setScreen("results")}>
-          Results
-        </p>
-
-        <p style={{ cursor: "pointer" }} onClick={() => setScreen("recommendations")}>
-          Recommendations
-        </p>
+        <br />
+        <button onClick={handleLogout}>Logout</button>
       </div>
 
-      {/* MAIN CONTENT */}
+      {/* MAIN */}
       <div style={{ flex: 1, padding: 20 }}>
-        {/* DASHBOARD */}
+
         {screen === "dashboard" && (
           <>
-            <h1>Welcome to your Dashboard</h1>
-            <p>Select a section from the menu</p>
+            <h1>Welcome</h1>
+            <p>Select a section</p>
           </>
         )}
 
-        {/* ASSESSMENT */}
         {screen === "assessment" && (
           <>
             <h2>{currentSection}</h2>
 
             {sections[currentSection].map((q, i) => (
-              <div key={i} style={{ marginBottom: 20 }}>
+              <div key={i}>
                 <p>{q}</p>
-                <select
-                  value={answers[currentSection]?.[q] || ""}
-                  onChange={(e) =>
-                    handleChange(currentSection, q, e.target.value)
-                  }
-                  style={{ width: isMobile ? "100%" : "auto" }}
-                >
+                <select onChange={(e) =>
+                  handleChange(currentSection, q, e.target.value)
+                }>
                   <option value="">Select</option>
-                  <option value="1">1 - Poor</option>
-                  <option value="2">2 - Weak</option>
-                  <option value="3">3 - Average</option>
-                  <option value="4">4 - Good</option>
-                  <option value="5">5 - Excellent</option>
+                  <option value="1">1</option>
+                  <option value="2">2</option>
+                  <option value="3">3</option>
+                  <option value="4">4</option>
+                  <option value="5">5</option>
                 </select>
               </div>
             ))}
 
-            <div style={{ marginTop: 20 }}>
-              {step > 0 && (
-                <button onClick={() => setStep(step - 1)}>
-                  Back
-                </button>
-              )}
-
-              <button
-                style={{ marginLeft: 10 }}
-                onClick={() => {
-                  if (step < sectionNames.length - 1) {
-                    setStep(step + 1);
-                  } else {
-                    setScreen("results");
-                  }
-                }}
-              >
-                Next
-              </button>
-            </div>
+            <button onClick={() => {
+              if (step < sectionNames.length - 1) {
+                setStep(step + 1);
+              } else {
+                setScreen("results");
+              }
+            }}>
+              Next
+            </button>
           </>
         )}
 
-        {/* RESULTS */}
         {screen === "results" && (
           <>
-            <h2>📊 Results</h2>
-            <h3>Score: {calculateScore()}%</h3>
-            <h3>Performance: {getPerformanceLevel(calculateScore())}</h3>
-
-            <button onClick={() => setScreen("dashboard")}>
-              Back to Dashboard
-            </button>
+            <h2>Results</h2>
+            <h3>{calculateScore()}%</h3>
+            <h3>{getPerformanceLevel(calculateScore())}</h3>
           </>
         )}
 
-        {/* RECOMMENDATIONS */}
         {screen === "recommendations" && (
           <>
-            <h2>💡 Recommendations</h2>
+            <h2>Recommendations</h2>
             <p>{getRecommendation(calculateScore())}</p>
-
-            <button onClick={() => setScreen("dashboard")}>
-              Back to Dashboard
-            </button>
           </>
         )}
+
       </div>
     </div>
   );

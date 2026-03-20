@@ -101,7 +101,6 @@ export default function Home() {
   return (
     <div style={{ display: "flex", minHeight: "100vh" }}>
       
-      {/* Sidebar */}
       <div style={{ width: 200, background: "#111", color: "#fff", padding: 20 }}>
         <h2>SaaS</h2>
         <p onClick={() => setView("dashboard")}>Dashboard</p>
@@ -109,7 +108,6 @@ export default function Home() {
         <p onClick={() => setView("results")}>Results</p>
       </div>
 
-      {/* Main */}
       <div style={{ flex: 1, padding: 20 }}>
         
         {view === "dashboard" && (
@@ -165,9 +163,7 @@ export default function Home() {
         )}
 
         {view === "results" && (
-          <>
-            <h2>Results (coming next)</h2>
-          </>
+          <h2>Results (coming next)</h2>
         )}
 
       </div>
